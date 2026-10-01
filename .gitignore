@@ -1,0 +1,9 @@
+node_modules/
+artifacts/
+vscode/dist/
+vscode/out/
+*.vsix
+zed/target/
+zed/extension.wasm
+zed/grammars/
+.DS_Store
