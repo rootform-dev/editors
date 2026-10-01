@@ -12,6 +12,119 @@ function completionLabel(item) {
   return typeof item.label === "string" ? item.label : (item.label?.label ?? "");
 }
 
+const MATCH_KINDS = [
+  "settings",
+  "provider",
+  "resource",
+  "data",
+  "ephemeral",
+  "action",
+  "module",
+  "variable",
+  "local",
+  "output",
+  "moved",
+  "removed",
+  "import",
+  "check",
+  "language",
+];
+
+const CLOSED_ENUM_COMPLETIONS = new Set([
+  ...MATCH_KINDS,
+  "global",
+  "absent",
+  "indeterminate",
+  "allow",
+  "deny",
+  "none",
+  "record",
+  "report",
+]);
+
+const SCHEMA_COMPLETIONS = new Set([
+  "as",
+  "match",
+  "identity",
+  "endpoint",
+  "context",
+  "contribution",
+  "relation",
+  "composition",
+  "member",
+  "kind",
+  "type",
+  "where",
+  "by",
+  "strategy",
+  "scope",
+  "on_null",
+  "external",
+  "disclose",
+  ...CLOSED_ENUM_COMPLETIONS,
+]);
+
+const COMPLETION_CURSOR = "<|>";
+
+function completionItems(result) {
+  return Array.isArray(result) ? result : (result?.items ?? []);
+}
+
+function schemaCompletionLabels(items) {
+  return [
+    ...new Set(items.map(completionLabel).filter((label) => SCHEMA_COMPLETIONS.has(label))),
+  ].sort();
+}
+
+function assertSchemaCompletions(items, expected, description) {
+  assert.deepEqual(schemaCompletionLabels(items), [...expected].sort(), description);
+  for (const item of items) {
+    const label = completionLabel(item);
+    if (CLOSED_ENUM_COMPLETIONS.has(label)) {
+      assert.equal(
+        item.detail,
+        undefined,
+        `Closed enum completion ${label} should have no detail.`,
+      );
+    }
+  }
+}
+
+function assertNoClosedEnumCompletions(items, description) {
+  const suggestions = [...new Set(items.map(completionLabel))].filter((label) =>
+    CLOSED_ENUM_COMPLETIONS.has(label),
+  );
+  assert.deepEqual(suggestions, [], description);
+}
+
+async function completionsAt(document, markedSource) {
+  const cursorOffset = markedSource.indexOf(COMPLETION_CURSOR);
+  assert.notEqual(cursorOffset, -1, "Completion source must contain its cursor marker.");
+  assert.equal(
+    markedSource.indexOf(COMPLETION_CURSOR, cursorOffset + COMPLETION_CURSOR.length),
+    -1,
+    "Completion source must contain exactly one cursor marker.",
+  );
+  const source =
+    markedSource.slice(0, cursorOffset) +
+    markedSource.slice(cursorOffset + COMPLETION_CURSOR.length);
+  await replaceDocument(document, source);
+  const position = document.positionAt(cursorOffset);
+  const result = await vscode.commands.executeCommand(
+    "vscode.executeCompletionItemProvider",
+    document.uri,
+    position,
+  );
+  return { items: completionItems(result), position, source };
+}
+
+function completionSnippetText(item) {
+  if (((item.insertTextRules ?? 0) & 4) === 0) return undefined;
+  const text = item.textEdit?.newText ?? item.insertText;
+  if (typeof text === "string") return text;
+  return typeof text?.value === "string" ? text.value : undefined;
+}
+
 async function until(description, predicate, timeoutMs = 15000) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
@@ -40,6 +153,216 @@ async function openFile(filename) {
   const document = await vscode.workspace.openTextDocument(vscode.Uri.file(filename));
   await vscode.window.showTextDocument(document, { preview: false });
   return document;
+}
+
+async function exerciseCompletionMatrix(firstRoot) {
+  const scratchPath = path.join(firstRoot, `completion-${process.pid}-${Date.now()}.rf.hcl`);
+  const previousEditor = vscode.window.activeTextEditor;
+  const previousSelection = previousEditor?.selection;
+  const previousViewColumn = previousEditor?.viewColumn;
+  let document;
+
+  await fs.writeFile(scratchPath, "", { flag: "wx" });
+  try {
+    document = await openFile(scratchPath);
+    assert.equal(
+      vscode.workspace.getConfiguration("editor", document).get("wordBasedSuggestions"),
+      "off",
+      "Rootform should not mix document word guesses with semantic completions.",
+    );
+    const cases = [
+      {
+        name: "empty rule body",
+        source: `rule "completion" {\n  ${COMPLETION_CURSOR}\n}`,
+        expected: [
+          "as",
+          "match",
+          "identity",
+          "endpoint",
+          "context",
+          "contribution",
+          "relation",
+          "composition",
+        ],
+      },
+      {
+        name: "empty rule.match body",
+        source: `rule "completion" {\n  match {\n    ${COMPLETION_CURSOR}\n  }\n}`,
+        expected: ["kind", "type", "where"],
+      },
+      {
+        name: "nested relation.match body",
+        source: `rule "completion" {\n  relation "related" {\n    match {\n      ${COMPLETION_CURSOR}\n    }\n  }\n}`,
+        expected: ["by", "strategy"],
+      },
+      {
+        name: "composition.member.match body",
+        source: `rule "completion" {\n  composition {\n    member "part" {\n      match {\n        ${COMPLETION_CURSOR}\n      }\n    }\n  }\n}`,
+        expected: ["kind", "type", "where"],
+      },
+      {
+        name: "identity.scope values",
+        source: `rule "completion" {\n  identity {\n    scope = "${COMPLETION_CURSOR}"\n  }\n}`,
+        expected: ["provider", "global"],
+      },
+      {
+        name: "relation.on_null values",
+        source: `rule "completion" {\n  relation "related" {\n    on_null = "${COMPLETION_CURSOR}"\n  }\n}`,
+        expected: ["absent", "indeterminate"],
+      },
+      {
+        name: "context.external values",
+        source: `rule "completion" {\n  context {\n    external = "${COMPLETION_CURSOR}"\n  }\n}`,
+        expected: ["allow", "deny"],
+      },
+      {
+        name: "context.disclose values",
+        source: `rule "completion" {\n  context {\n    disclose = "${COMPLETION_CURSOR}"\n  }\n}`,
+        expected: ["none", "record", "report"],
+      },
+      {
+        name: "rule.match.kind values",
+        source: `rule "completion" {\n  match {\n    kind = "${COMPLETION_CURSOR}"\n  }\n}`,
+        expected: MATCH_KINDS,
+      },
+    ];
+
+    let emptyRule;
+    for (const testCase of cases) {
+      const result = await completionsAt(document, testCase.source);
+      assertSchemaCompletions(
+        result.items,
+        testCase.expected,
+        `Rootform completion in ${testCase.name}.`,
+      );
+      if (testCase.name === "empty rule body") emptyRule = result;
+    }
+
+    const matchItem = emptyRule.items.find((item) => completionLabel(item) === "match");
+    const matchSnippet = matchItem && completionSnippetText(matchItem);
+    if (matchSnippet !== undefined) {
+      await replaceDocument(document, emptyRule.source);
+      const editor = await vscode.window.showTextDocument(document, { preview: false });
+      editor.selection = new vscode.Selection(emptyRule.position, emptyRule.position);
+      await vscode.commands.executeCommand("editor.action.insertSnippet", {
+        snippet: matchSnippet,
+      });
+      const insertedText = document.getText();
+      const cursorOffset = document.offsetAt(editor.selection.active);
+      const matchStart = insertedText.lastIndexOf("match", cursorOffset);
+      const openingBrace = insertedText.indexOf("{", matchStart);
+      const closingBrace = insertedText.indexOf("}", cursorOffset);
+      assert.ok(matchStart >= 0 && openingBrace > matchStart);
+      assert.ok(
+        cursorOffset > openingBrace && closingBrace > cursorOffset,
+        "Body snippet should leave the cursor inside the inserted match block.",
+      );
+      assert.equal(
+        /\$(?:\d+|\{\d+[^}]*\})/.test(insertedText),
+        false,
+        "VS Code should resolve snippet placeholders.",
+      );
+      await replaceDocument(document, emptyRule.source);
+    }
+
+    const emptyReference = await completionsAt(
+      document,
+      `rule "empty-reference" {\n  as = ${COMPLETION_CURSOR}\n}`,
+    );
+    assertNoClosedEnumCompletions(
+      emptyReference.items,
+      "An empty Concept reference should not offer closed enum values.",
+    );
+    assert.ok(
+      emptyReference.items.some((item) => {
+        const label = completionLabel(item);
+        return label === "network" || label.endsWith(".concept.network");
+      }),
+      "An empty as value should offer the local Concept reference.",
+    );
+    assert.equal(
+      emptyReference.items.some((item) => {
+        const label = completionLabel(item);
+        return (
+          label === "service" ||
+          label.endsWith(".service") ||
+          label === "json-service" ||
+          label.endsWith(".json-service")
+        );
+      }),
+      false,
+      "An empty as value must stay within the first workspace root.",
+    );
+
+    const occupiedRule = await completionsAt(
+      document,
+      `rule "occupied-singletons" {\n  match { type = "example_network" }\n  as = concept.network\n  identity { scope = "provider" }\n  endpoint { attributes = [] }\n  composition {\n    member "part" {\n      via = source.part\n      match { type = "example_network" }\n    }\n  }\n  ${COMPLETION_CURSOR}\n}`,
+    );
+    assertSchemaCompletions(
+      occupiedRule.items,
+      ["context", "contribution", "relation"],
+      "Occupied singleton rule fields and blocks should be omitted.",
+    );
+
+    const occupiedMatch = await completionsAt(
+      document,
+      `rule "occupied-match" {\n  match {\n    kind = "resource"\n    type = "example_network"\n    ${COMPLETION_CURSOR}\n  }\n}`,
+    );
+    assertSchemaCompletions(
+      occupiedMatch.items,
+      ["where"],
+      "Occupied match attributes should be omitted.",
+    );
+
+    const occupiedRelationMatch = await completionsAt(
+      document,
+      `rule "occupied-relation-match" {\n  relation "related" {\n    match {\n      by = target.path\n      ${COMPLETION_CURSOR}\n    }\n  }\n}`,
+    );
+    assertSchemaCompletions(
+      occupiedRelationMatch.items,
+      ["strategy"],
+      "An occupied relation.match.by attribute should be omitted.",
+    );
+
+    for (const [name, source] of [
+      ["match.type", `rule "open-type" {\n  match {\n    type = "${COMPLETION_CURSOR}"\n  }\n}`],
+      ["description", `concept "open-description" {\n  description = "${COMPLETION_CURSOR}"\n}`],
+    ]) {
+      const result = await completionsAt(document, source);
+      assertNoClosedEnumCompletions(
+        result.items,
+        `An arbitrary ${name} string should not offer closed enum values.`,
+      );
+    }
+  } finally {
+    try {
+      if (document) {
+        await replaceDocument(document, "");
+        await document.save();
+        await vscode.window.showTextDocument(document, { preview: false });
+        await vscode.commands.executeCommand("workbench.action.closeActiveEditor");
+        await until(
+          "scratch completion document closing",
+          () =>
+            !vscode.window.tabGroups.all.some((group) =>
+              group.tabs.some(
+                (tab) =>
+                  tab.input instanceof vscode.TabInputText && tab.input.uri.fsPath === scratchPath,
+              ),
+            ),
+          5000,
+        );
+      }
+    } finally {
+      await fs.rm(scratchPath, { force: true });
+      if (previousEditor) {
+        const options = { preview: false };
+        if (previousViewColumn !== undefined) options.viewColumn = previousViewColumn;
+        const restored = await vscode.window.showTextDocument(previousEditor.document, options);
+        if (previousSelection) restored.selection = previousSelection;
+      }
+    }
+  }
 }
 
 async function rootformLogContains(message) {
@@ -155,6 +478,8 @@ async function run() {
     "diagnostics clearing in the second workspace root",
     () => vscode.languages.getDiagnostics(peerDialect.uri).length === 0,
   );
+
+  await exerciseCompletionMatrix(firstRoot);
 
   await replaceDocument(dialect, dialect.getText().replace('version = "0.1.0"', 'version = "0.1"'));
   await until(

@@ -71,7 +71,7 @@
     },
     "blocks": {
       "name": "keyword.control.block.rootform",
-      "match": "\\b(?:dialect|concept|context|relation|rule|policy_pack|policy|provider|match|identity|endpoint|composition|member|target)\\b(?=\\s*(?:\"(?:\\\\.|[^\"])*\"|[A-Za-z_][A-Za-z0-9_-]*)?\\s*\\{)"
+      "match": "\\b(?:dialect|concept|context|relation|rule|policy_pack|policy|provider|match|identity|endpoint|contribution|composition|member|target)\\b(?=\\s*(?:\"(?:\\\\.|[^\"])*\"|[A-Za-z_][A-Za-z0-9_-]*)?\\s*\\{)"
     },
     "attributes": {
       "patterns": [

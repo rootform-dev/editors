@@ -36,6 +36,11 @@
     "typescript": "7.0.2"
   },
   "contributes": {
+    "configurationDefaults": {
+      "[rootform]": {
+        "editor.wordBasedSuggestions": "off"
+      }
+    },
     "languages": [
       {
         "id": "rootform",

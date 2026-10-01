@@ -102,3 +102,79 @@ fn shipped_queries_capture_representative_error_free_hcl() {
         .expect("indents query should compile against the pinned HCL grammar");
     assert_captures(&indents, &tree, &["indent", "outdent"]);
 }
+
+#[test]
+fn every_rootform_block_keyword_has_a_highlight() {
+    let source = r#"
+dialect "demo" {
+  provider "hashicorp/local" {}
+}
+concept "service" {}
+context "network" {}
+relation "uses" {}
+policy_pack "checks" {}
+policy "check" {
+  target {}
+}
+rule "service" {
+  match {}
+  identity {}
+  endpoint {}
+  context {}
+  relation {}
+  contribution {}
+  composition {
+    member "part" {
+      match {}
+    }
+  }
+}
+"#;
+    let language = hcl_language();
+    let mut parser = Parser::new();
+    parser.set_language(&language).unwrap();
+    let tree = parser.parse(source, None).unwrap();
+    assert!(!tree.root_node().has_error());
+    let query = Query::new(&language, HIGHLIGHTS_QUERY).unwrap();
+    let mut cursor = QueryCursor::new();
+    let mut highlighted = BTreeSet::new();
+    let mut matches = cursor.matches(&query, tree.root_node(), source.as_bytes());
+    while let Some(found) = matches.next() {
+        for capture in found.captures {
+            if matches!(
+                query.capture_names()[capture.index as usize],
+                "keyword" | "type"
+            ) {
+                highlighted.insert(
+                    capture
+                        .node
+                        .utf8_text(source.as_bytes())
+                        .unwrap()
+                        .to_owned(),
+                );
+            }
+        }
+    }
+    for name in [
+        "dialect",
+        "provider",
+        "concept",
+        "context",
+        "relation",
+        "policy_pack",
+        "policy",
+        "target",
+        "rule",
+        "match",
+        "identity",
+        "endpoint",
+        "contribution",
+        "composition",
+        "member",
+    ] {
+        assert!(
+            highlighted.contains(name),
+            "unhighlighted Rootform block: {name}"
+        );
+    }
+}

@@ -73,4 +73,4 @@
     (body
       (block
         (identifier) @type
-        (#any-of? @type "provider" "match" "context" "relation" "contribution" "composition" "target" "policy")))))
+        (#any-of? @type "provider" "match" "identity" "endpoint" "context" "relation" "contribution" "composition" "member" "target" "policy")))))
