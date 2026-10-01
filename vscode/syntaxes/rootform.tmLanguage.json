@@ -1,0 +1,112 @@
+{
+  "name": "Rootform",
+  "scopeName": "source.rootform",
+  "fileTypes": ["rf.hcl"],
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#heredoc" },
+    { "include": "#strings" },
+    { "include": "#blocks" },
+    { "include": "#attributes" },
+    { "include": "#constants" },
+    { "include": "#numbers" },
+    { "include": "#operators" },
+    { "include": "#punctuation" }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.line.number-sign.hcl",
+          "match": "#.*$"
+        },
+        {
+          "name": "comment.line.double-slash.hcl",
+          "match": "//.*$"
+        },
+        {
+          "name": "comment.block.hcl",
+          "begin": "/\\*",
+          "end": "\\*/",
+          "beginCaptures": { "0": { "name": "punctuation.definition.comment.hcl" } },
+          "endCaptures": { "0": { "name": "punctuation.definition.comment.hcl" } }
+        }
+      ]
+    },
+    "heredoc": {
+      "name": "string.unquoted.heredoc.hcl",
+      "begin": "<<-?([A-Za-z_][A-Za-z0-9_]*)",
+      "beginCaptures": {
+        "0": { "name": "punctuation.definition.string.begin.hcl" },
+        "1": { "name": "entity.name.tag.heredoc.hcl" }
+      },
+      "end": "^\\s*\\1\\s*$",
+      "endCaptures": { "0": { "name": "punctuation.definition.string.end.hcl" } }
+    },
+    "strings": {
+      "name": "string.quoted.double.hcl",
+      "begin": "\"",
+      "end": "\"",
+      "beginCaptures": { "0": { "name": "punctuation.definition.string.begin.hcl" } },
+      "endCaptures": { "0": { "name": "punctuation.definition.string.end.hcl" } },
+      "patterns": [
+        {
+          "name": "constant.character.escape.hcl",
+          "match": "\\\\(?:[\\\\\"nrt]|u[0-9A-Fa-f]{4}|U[0-9A-Fa-f]{8])"
+        },
+        {
+          "name": "meta.interpolation.hcl",
+          "begin": "\\$\\{",
+          "end": "\\}",
+          "beginCaptures": { "0": { "name": "punctuation.section.interpolation.begin.hcl" } },
+          "endCaptures": { "0": { "name": "punctuation.section.interpolation.end.hcl" } },
+          "patterns": [
+            { "include": "#constants" },
+            { "include": "#numbers" },
+            { "include": "#operators" },
+            { "include": "#punctuation" }
+          ]
+        }
+      ]
+    },
+    "blocks": {
+      "name": "keyword.control.block.rootform",
+      "match": "\\b(?:dialect|concept|context|relation|rule|policy_pack|policy|provider|match|identity|endpoint|composition|member|target)\\b(?=\\s*(?:\"(?:\\\\.|[^\"])*\"|[A-Za-z_][A-Za-z0-9_-]*)?\\s*\\{)"
+    },
+    "attributes": {
+      "patterns": [
+        {
+          "name": "variable.other.property.hcl",
+          "match": "\\b[A-Za-z_][A-Za-z0-9_-]*(?=\\s*=)"
+        },
+        {
+          "name": "entity.name.function.hcl",
+          "match": "\\b[A-Za-z_][A-Za-z0-9_-]*(?=\\s*\\()"
+        }
+      ]
+    },
+    "constants": {
+      "patterns": [
+        { "name": "constant.language.boolean.hcl", "match": "\\b(?:true|false)\\b" },
+        { "name": "constant.language.null.hcl", "match": "\\bnull\\b" },
+        { "name": "variable.other.readwrite.hcl", "match": "\\b[A-Za-z_][A-Za-z0-9_-]*\\b" }
+      ]
+    },
+    "numbers": {
+      "name": "constant.numeric.hcl",
+      "match": "(?<![A-Za-z0-9_])-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?(?:[eE][+-]?[0-9]+)?"
+    },
+    "operators": {
+      "name": "keyword.operator.hcl",
+      "match": "(?:==|!=|<=|>=|&&|\\|\\||=>|[=+*/%<>!-])"
+    },
+    "punctuation": {
+      "patterns": [
+        { "name": "punctuation.section.block.begin.hcl", "match": "[{}]" },
+        { "name": "punctuation.section.sequence.hcl", "match": "[\\[\\]()]" },
+        { "name": "punctuation.separator.comma.hcl", "match": "," },
+        { "name": "punctuation.accessor.hcl", "match": "\\." }
+      ]
+    }
+  }
+}

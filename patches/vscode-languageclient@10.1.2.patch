@@ -1,0 +1,31 @@
+diff --git a/lib/common/client.js b/lib/common/client.js
+index 05c900d02073cfc5b2d19ed400b5a1d434b74611..8103600b0d92d89bb1881ec89f7136bd94eb0e11 100644
+--- a/lib/common/client.js
++++ b/lib/common/client.js
+@@ -1048,7 +1048,7 @@ class BaseLanguageClient {
+             this.error(`${this._name} client: couldn't create connection to server.`, error, 'force');
+             reject(error);
+         }
+-        return this._onStart;
++        return promise;
+     }
+     createOnStartPromise() {
+         let resolve;
+@@ -1168,7 +1168,7 @@ class BaseLanguageClient {
+                     void this.initialize(connection);
+                 }
+                 else {
+-                    void this.stop();
++                    void this.stop().catch(error => this.error('Stopping after initialization failure failed.', error, false));
+                 }
+             }
+             else if (error instanceof vscode_languageserver_protocol_1.ResponseError && error.data && error.data.retry) {
+@@ -1217,7 +1217,7 @@ class BaseLanguageClient {
+     }
+     async shutdown(mode, timeout = 2000) {
+         // If the client is stopped or in its initial state return.
+-        if (this.$state === ClientState.Stopped || this.$state === ClientState.Initial) {
++        if (this.$state === ClientState.Stopped || this.$state === ClientState.Initial || this.$state === ClientState.StartFailed) {
+             return;
+         }
+         // If we are stopping the client and have a stop promise return it.

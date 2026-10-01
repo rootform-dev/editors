@@ -1,0 +1,15 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.5.14/schema.json",
+  "files": {
+    "includes": [
+      "**",
+      "!vscode/dist/**",
+      "!vscode/out/**",
+      "!zed/target/**",
+      "!zed/grammars/**",
+      "!artifacts/**"
+    ]
+  },
+  "formatter": { "indentStyle": "space", "indentWidth": 2, "lineWidth": 100 },
+  "linter": { "enabled": false }
+}
