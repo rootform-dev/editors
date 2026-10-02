@@ -17,3 +17,7 @@ the clients only own syntax presentation, launch and lifecycle.
 
 Source is [Apache-2.0](LICENSE). Third-party syntax dependencies retain their
 original licenses.
+
+Native editor runtime qualification currently covers macOS arm64. The Zed
+package also builds for `wasm32-wasip2`; Linux and Windows editor runtimes have
+not yet been qualified.

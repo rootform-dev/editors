@@ -1,0 +1,17 @@
+[package]
+name = "rootform-zed"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.93.1"
+license = "Apache-2.0"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+zed_extension_api = "=0.7.0"
+
+[dev-dependencies]
+tree-sitter = "=0.25.3"
+tree-sitter-hcl = { git = "https://github.com/tree-sitter-grammars/tree-sitter-hcl", rev = "fad991865fee927dd1de5e172fb3f08ac674d914" }

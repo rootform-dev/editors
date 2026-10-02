@@ -1,0 +1,33 @@
+name: Verify
+on:
+  pull_request:
+    branches: [dev]
+  push:
+    branches: [dev]
+permissions:
+  contents: read
+concurrency:
+  group: verify-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  packages:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 22
+          package-manager-cache: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: 1.4.0
+      - name: Prepare pinned Rust toolchain
+        run: rustup toolchain install 1.93.1 --profile minimal --component rustfmt --target wasm32-wasip2
+      - run: bun install --frozen-lockfile
+      - run: bun run verify
+      - name: Package VS Code
+        run: |
+          mkdir -p artifacts
+          bun run --cwd vscode package -- --out ../artifacts/rootform.vsix

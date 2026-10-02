@@ -1,0 +1,96 @@
+{
+  "name": "rootform",
+  "displayName": "Rootform",
+  "description": "Thin VS Code language client for Rootform source files.",
+  "publisher": "rootform-dev",
+  "version": "0.1.0",
+  "license": "Apache-2.0",
+  "engines": {
+    "vscode": "^1.133.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "main": "./dist/extension.js",
+  "activationEvents": [
+    "onLanguage:rootform",
+    "workspaceContains:**/*.rf.json"
+  ],
+  "scripts": {
+    "build": "bun run compile && bun build src/extension.ts --outdir dist --target node --format cjs --external vscode",
+    "compile": "tsc --project tsconfig.json",
+    "test:unit": "bun run compile && node --test test/serverController.test.cjs",
+    "test:integration": "bun run build && node test/run-integration.cjs",
+    "verify": "bun run test:unit",
+    "vscode:prepublish": "bun run build",
+    "package": "vsce package --no-dependencies"
+  },
+  "dependencies": {
+    "vscode-languageclient": "10.1.2"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.4",
+    "@types/vscode": "1.91.0",
+    "@vscode/test-electron": "3.1.0",
+    "@vscode/vsce": "4.0.0",
+    "typescript": "7.0.2"
+  },
+  "contributes": {
+    "configurationDefaults": {
+      "[rootform]": {
+        "editor.wordBasedSuggestions": "off"
+      }
+    },
+    "languages": [
+      {
+        "id": "rootform",
+        "aliases": [
+          "Rootform",
+          "rootform"
+        ],
+        "extensions": [
+          ".rf.hcl"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "rootform",
+        "scopeName": "source.rootform",
+        "path": "./syntaxes/rootform.tmLanguage.json"
+      }
+    ],
+    "commands": [
+      {
+        "command": "rootform.restartLanguageServer",
+        "title": "Rootform: Restart Language Server"
+      }
+    ],
+    "configuration": {
+      "title": "Rootform",
+      "properties": {
+        "rootform.server.path": {
+          "type": "string",
+          "default": "rootform",
+          "scope": "machine-overridable",
+          "description": "Absolute path or command name resolved through PATH for a local Rootform executable. The executable is started with the lsp command."
+        }
+      }
+    }
+  },
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": "limited",
+      "description": "Rootform starts the configured local executable only in trusted workspaces.",
+      "restrictedConfigurations": [
+        "rootform.server.path"
+      ]
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rootform-dev/editors.git",
+    "directory": "vscode"
+  }
+}

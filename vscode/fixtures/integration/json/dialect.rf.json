@@ -1,0 +1,12 @@
+{
+  "dialect": {
+    "json-owner": {
+      "version": "0.1.0"
+    }
+  },
+  "concept": {
+    "json-service": {
+      "description": "Synthetic JSON source root."
+    }
+  }
+}

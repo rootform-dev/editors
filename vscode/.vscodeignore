@@ -1,0 +1,9 @@
+**
+!package.json
+!README.md
+!LICENSE
+!THIRD_PARTY_NOTICES.md
+!licenses/**
+!language-configuration.json
+!syntaxes/**
+!dist/**

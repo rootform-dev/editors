@@ -1,0 +1,15 @@
+id = "rootform"
+name = "Rootform"
+description = "Rootform language support for Zed."
+version = "0.1.0"
+schema_version = 1
+authors = ["Rootform"]
+repository = "https://github.com/rootform-dev/editors"
+
+[language_servers.rootform]
+name = "Rootform Language Server"
+languages = ["Rootform"]
+
+[grammars.hcl]
+repository = "https://github.com/tree-sitter-grammars/tree-sitter-hcl"
+commit = "fad991865fee927dd1de5e172fb3f08ac674d914"
