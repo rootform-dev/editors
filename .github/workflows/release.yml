@@ -1,0 +1,142 @@
+name: Release
+# A version tag packages one VSIX, attaches it to a GitHub release and
+# publishes that same file to Open VSX and the Visual Studio Marketplace.
+# docs/releasing.md covers the one-time store setup and the Zed registry.
+on:
+  push:
+    tags: ["v[0-9]+.[0-9]+.[0-9]+"]
+permissions:
+  contents: read
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  package:
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          package-manager-cache: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: 1.4.0
+      - name: Prepare pinned Rust toolchain
+        run: rustup toolchain install 1.90 --profile minimal --component rustfmt --target wasm32-wasip2
+      - run: bun install --frozen-lockfile
+      - name: Check that the tag names the manifest version
+        id: version
+        run: |
+          version="$(node -p 'require("./vscode/package.json").version')"
+          if [ "$GITHUB_REF_NAME" != "v$version" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match manifest version $version."
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - run: bun run verify
+      - name: Package VS Code extension
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          mkdir -p artifacts
+          bun run --cwd vscode package -- --out "../artifacts/rootform-$VERSION.vsix"
+          cd artifacts && sha256sum "rootform-$VERSION.vsix" > SHA256SUMS
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: vsix
+          path: artifacts/
+          if-no-files-found: error
+
+  github-release:
+    needs: package
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: vsix
+          path: artifacts
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.package.outputs.version }}
+        run: >-
+          gh release create "$GITHUB_REF_NAME" artifacts/*
+          --repo "$GITHUB_REPOSITORY" --verify-tag
+          --title "Rootform editors $VERSION"
+          --notes "VS Code and Zed extensions $VERSION. Changes: https://github.com/$GITHUB_REPOSITORY/blob/$GITHUB_REF_NAME/vscode/CHANGELOG.md"
+
+  open-vsx:
+    needs: package
+    runs-on: ubuntu-24.04
+    environment: release
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          package-manager-cache: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: 1.4.0
+      - run: bun install --frozen-lockfile
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: vsix
+          path: artifacts
+      # Trusted publishing exchanges this job's OIDC token. OVSX_PAT exists only
+      # to bootstrap the first version and takes precedence while it is set.
+      - name: Publish to Open VSX
+        working-directory: vscode
+        env:
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}
+          VERSION: ${{ needs.package.outputs.version }}
+        run: ./node_modules/.bin/ovsx publish --packagePath "../artifacts/rootform-$VERSION.vsix" --skip-duplicate
+
+  vs-marketplace:
+    needs: package
+    # Runs once the Entra ID identity is configured; until then the VSIX from
+    # the GitHub release is uploaded on the Marketplace publisher page.
+    if: vars.AZURE_CLIENT_ID != ''
+    runs-on: ubuntu-24.04
+    environment: release
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          package-manager-cache: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: 1.4.0
+      - run: bun install --frozen-lockfile
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: vsix
+          path: artifacts
+      - uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          allow-no-subscriptions: true
+      - name: Publish to the Visual Studio Marketplace
+        working-directory: vscode
+        env:
+          VERSION: ${{ needs.package.outputs.version }}
+        run: ./node_modules/.bin/vsce publish --azure-credential --packagePath "../artifacts/rootform-$VERSION.vsix" --skip-duplicate
