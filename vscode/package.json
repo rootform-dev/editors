@@ -1,15 +1,36 @@
 {
   "name": "rootform",
   "displayName": "Rootform",
-  "description": "Thin VS Code language client for Rootform source files.",
+  "description": "Write Rootform .rf.hcl source with diagnostics, completion, hover, go to definition and formatting from your local Rootform CLI.",
   "publisher": "rootform-dev",
   "version": "0.1.0",
   "license": "Apache-2.0",
+  "icon": "images/icon.png",
+  "galleryBanner": {
+    "color": "#181514",
+    "theme": "dark"
+  },
+  "pricing": "Free",
+  "homepage": "https://rootform.dev",
+  "bugs": {
+    "url": "https://github.com/rootform-dev/editors/issues"
+  },
+  "keywords": [
+    "rootform",
+    "rf.hcl",
+    "hcl",
+    "terraform",
+    "opentofu",
+    "dialect",
+    "policy",
+    "lsp"
+  ],
   "engines": {
     "vscode": "^1.133.0"
   },
   "categories": [
-    "Programming Languages"
+    "Programming Languages",
+    "Formatters"
   ],
   "main": "./dist/extension.js",
   "activationEvents": [
@@ -33,6 +54,7 @@
     "@types/vscode": "1.91.0",
     "@vscode/test-electron": "3.1.0",
     "@vscode/vsce": "4.0.0",
+    "ovsx": "1.2.0",
     "typescript": "7.0.2"
   },
   "contributes": {
