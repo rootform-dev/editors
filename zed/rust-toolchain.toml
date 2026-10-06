@@ -1,5 +1,8 @@
+# The Zed extension registry packages extensions with Rust 1.90
+# (RUSTUP_TOOLCHAIN in zed-industries/extensions CI). Develop and verify with
+# the same compiler so the registry build matches local and CI builds.
 [toolchain]
-channel = "1.93.1"
+channel = "1.90"
 profile = "minimal"
 components = ["rustfmt"]
 targets = ["wasm32-wasip2"]

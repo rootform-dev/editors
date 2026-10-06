@@ -24,7 +24,7 @@ jobs:
         with:
           bun-version: 1.4.0
       - name: Prepare pinned Rust toolchain
-        run: rustup toolchain install 1.93.1 --profile minimal --component rustfmt --target wasm32-wasip2
+        run: rustup toolchain install 1.90 --profile minimal --component rustfmt --target wasm32-wasip2
       - run: bun install --frozen-lockfile
       - run: bun run verify
       - name: Package VS Code
