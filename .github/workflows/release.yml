@@ -95,6 +95,17 @@ jobs:
         with:
           name: vsix
           path: artifacts
+      # The first release creates the namespace with the bootstrap token.
+      - name: Create the Open VSX namespace
+        working-directory: vscode
+        env:
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}
+        run: |
+          namespace="$(node -p 'require("./package.json").publisher')"
+          status="$(curl -sS -o /dev/null -w '%{http_code}' "https://open-vsx.org/api/$namespace")"
+          if [ "$status" = "404" ] && [ -n "$OVSX_PAT" ]; then
+            ./node_modules/.bin/ovsx create-namespace "$namespace"
+          fi
       # Trusted publishing exchanges this job's OIDC token. OVSX_PAT exists only
       # to bootstrap the first version and takes precedence while it is set.
       - name: Publish to Open VSX

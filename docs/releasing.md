@@ -60,10 +60,10 @@ The namespace is `rootform-dev`, matching `publisher` exactly.
 
 1. Sign the Eclipse Foundation Publisher Agreement from the open-vsx.org
    profile, using the GitHub account that publishes.
-2. Create an access token, then the namespace:
-   `ovsx create-namespace rootform-dev` with the token in `OVSX_PAT`.
-3. For the first version, store the token as the `OVSX_PAT` secret of the
-   `release` environment.
+2. Create an access token on the open-vsx.org profile and store it as the
+   `OVSX_PAT` secret of the `release` environment. The first release
+   creates the `rootform-dev` namespace with it, then publishes.
+3. After that first release, check the extension page.
 4. Claim namespace ownership with an issue on
    [EclipseFdn/open-vsx.org](https://github.com/EclipseFdn/open-vsx.org/issues/new/choose).
 5. Register a trusted publisher for `rootform-dev.rootform`: GitHub Actions,
