@@ -9,21 +9,27 @@ accepts no pre-release suffix, and no store accepts the same version twice.
 
 1. On a branch, set the new version in the three manifests, add an entry to
    `vscode/CHANGELOG.md` and open a pull request into `dev`.
-2. After it merges, qualify the merge commit with the Rootform release it
-   targets: `bun run verify`, the VS Code extension-host suite with
+2. After it merges, promote `dev`: open a pull request from `dev` into
+   `main`; once `verify` passes on its head, run
+   `gh workflow run promote.yml --ref dev -f pull_request=<number>`, which
+   fast-forwards `main` to that exact commit.
+3. Qualify the `main` commit with the Rootform release it targets:
+   `bun run verify`, the VS Code extension-host suite with
    `ROOTFORM_BINARY`, and the Zed package installed as a dev extension.
-3. Tag the merge commit and push the tag:
+4. Tag the `main` commit and push the tag:
 
    ```sh
-   git tag -a v0.1.0 -m "Rootform editors 0.1.0" <merge-commit>
+   git tag -a v0.1.0 -m "Rootform editors 0.1.0" <main-commit>
    git push origin v0.1.0
    ```
 
-4. Update the Zed registry, as described below.
-5. Check each store page, then install from each store and open a `.rf.hcl`
+5. Update the Zed registry, as described below.
+6. Check each store page, then install from each store and open a `.rf.hcl`
    file with a released Rootform CLI.
 
-The [release workflow](../.github/workflows/release.yml) checks that the tag
+The [release workflow](../.github/workflows/release.yml) refuses a tag whose
+commit is not on `main` or did not pass `verify` in its promotion pull
+request. It checks that the tag
 matches the manifests, runs `verify`, packages one VSIX and attaches it with
 `SHA256SUMS` to the GitHub release. It publishes that same file to Open VSX
 and the Visual Studio Marketplace from the `release` environment, which only

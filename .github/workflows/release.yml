@@ -1,6 +1,7 @@
 name: Release
 # A version tag packages one VSIX, attaches it to a GitHub release and
 # publishes that same file to Open VSX and the Visual Studio Marketplace.
+# Only a tag on promoted main whose commit passed verify publishes.
 # docs/releasing.md covers the one-time store setup and the Zed registry.
 on:
   push:
@@ -13,9 +14,26 @@ concurrency:
 jobs:
   package:
     runs-on: ubuntu-24.04
+    permissions:
+      checks: read
+      contents: read
     outputs:
       version: ${{ steps.version.outputs.version }}
     steps:
+      - name: Require a tag on promoted main that passed verify
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          fail() { echo "::error::$1"; exit 1; }
+          commit="$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_REF_NAME" --jq .sha)"
+          status="$(gh api "repos/$GITHUB_REPOSITORY/compare/$commit...main" --jq .status)"
+          [[ "$status" == ahead || "$status" == identical ]] ||
+            fail "$GITHUB_REF_NAME names $commit, which is not on main. Promote dev to main, then tag the main commit."
+          verify="$(gh api "repos/$GITHUB_REPOSITORY/commits/$commit/check-runs?check_name=verify&per_page=100" \
+            --jq '[.check_runs[] | select(.app.slug == "github-actions")] | sort_by(.started_at) | last | .conclusion // "missing"')"
+          [[ "$verify" == success ]] ||
+            fail "verify has not passed on $commit (newest result: $verify). Tag the main commit validated by its promotion pull request."
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
