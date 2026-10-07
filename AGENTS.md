@@ -24,6 +24,9 @@ Read `docs/editor-contract.md` and the affected editor package before editing.
   download Rootform or trigger Terraform/provider/cloud execution.
 - Work on a branch and open a PR into `dev`. Never push directly to `main` or
   `dev`, force push, bypass checks or modify another task's branch/PR.
+- `main` moves only by promotion: a PR from `dev` into `main` whose head
+  passed `verify`, fast-forwarded by `promote.yml`. Release tags name a
+  `main` commit; `docs/releasing.md` describes the release.
 
 Local development evidence stays outside the public repository. Do not commit
 private implementation, project paths, inputs, credentials or operator notes.
