@@ -1,31 +1,19 @@
 # Rootform for VS Code
 
-Write Rootform `.rf.hcl` source with diagnostics, completion, hover, go to
-definition and formatting. The extension adds the Rootform language mode, with
-syntax highlighting, comments, bracket matching, automatic closing,
-indentation and folding, and connects VS Code to `rootform lsp` from your
-local Rootform CLI.
-
-Rootform owns parsing, compilation and formatting. The extension contains no
-compiler and does not include or download Rootform. Editing runs no Terraform,
-OpenTofu, provider or cloud call.
-
-## Requirements
-
-- Rootform on your machine. Follow
-  [Install Rootform](https://docs.rootform.dev/installation/), then check that
-  `rootform version` works.
-- VS Code 1.133 or later.
+Write `.rf.hcl` with diagnostics, completion, hover, definitions and formatting.
+The extension adds syntax highlighting and launches `rootform lsp` from your
+local CLI. It ships no compiler and downloads no Rootform binary. Editing
+executes no providers and makes no cloud calls.
 
 ## Get started
 
-1. Install Rootform, then this extension.
-2. Open a trusted workspace containing `.rf.hcl` files.
-3. Edit a Dialect or Policy Pack. Diagnostics follow your unsaved changes.
+1. [Install Rootform](https://docs.rootform.dev/installation/) and verify
+   `rootform version`.
+2. Install the extension in VS Code 1.133 or later.
+3. Open a trusted workspace containing `.rf.hcl` files.
 
-The extension starts `rootform` from VS Code's `PATH`. If Rootform is
-installed elsewhere, set **Rootform: Server Path** to the absolute path of the
-executable:
+The extension uses `rootform` from VS Code's `PATH`. For another location, set
+**Rootform: Server Path**:
 
 ```json
 {
@@ -33,45 +21,26 @@ executable:
 }
 ```
 
-`.rf.json` source files also reach the language server; VS Code keeps its JSON
-presentation for them.
+The setting accepts an absolute path or a command name. Run **Rootform: Restart
+Language Server** after changing the executable. `.rf.json` files also reach the
+server, while VS Code keeps their JSON presentation.
 
-## Settings and commands
+## Trust and troubleshooting
 
-| Setting or command | Purpose |
-| --- | --- |
-| `rootform.server.path` | Absolute path, or command name resolved through `PATH`, of the local Rootform executable. Default: `rootform`. |
-| **Rootform: Restart Language Server** | Restarts `rootform lsp`, for example after replacing the executable outside VS Code. |
+In Restricted Mode, syntax highlighting works and no process starts. A workspace
+cannot change the executable path until you trust it.
 
-## Workspace trust
+If Rootform is missing, set an absolute path; VS Code may have a different
+`PATH` from your terminal. Initialization times out after 10 seconds. Fix the
+setting, then restart the language server. After a successful start, unexpected
+server exits have a bounded number of automatic retries.
 
-The extension starts the configured executable only in a trusted workspace.
-In Restricted Mode, syntax highlighting still works and no process starts. A
-workspace cannot change `rootform.server.path` until you trust it.
-
-## Troubleshooting
-
-- **Rootform executable was not found**: install Rootform or set
-  `rootform.server.path` to an absolute path. A desktop application may not
-  see the `PATH` of your terminal.
-- If the process does not complete LSP initialization within 10 seconds, the
-  extension stops it and points to the setting. A failed first start is not
-  retried: fix the setting, then run **Rootform: Restart Language Server**.
-- A server that stops after a successful start is restarted by the language
-  client, within a bounded number of attempts.
-
-## Learn more
-
-- [Rootform in VS Code](https://docs.rootform.dev/integrations/vscode/)
-- [Edit Rootform source](https://docs.rootform.dev/language/editors/)
-- [`rootform lsp` reference](https://docs.rootform.dev/reference/cli/lsp/)
-- [Report an issue](https://github.com/rootform-dev/editors/issues)
+[VS Code guide](https://docs.rootform.dev/integrations/vscode/) |
+[`rootform lsp`](https://docs.rootform.dev/reference/cli/lsp/) |
+[Report an issue](https://github.com/rootform-dev/editors/issues)
 
 ## License
 
-The extension source is licensed under
 [Apache-2.0](https://github.com/rootform-dev/editors/blob/dev/vscode/LICENSE).
-Bundled runtime packages keep their own licenses, listed in
-[THIRD_PARTY_NOTICES.md](https://github.com/rootform-dev/editors/blob/dev/vscode/THIRD_PARTY_NOTICES.md).
-Rootform name and logo: trademark rights reserved, see
-[TRADEMARKS.md](https://github.com/rootform-dev/rootform/blob/dev/TRADEMARKS.md).
+[Third-party notices](https://github.com/rootform-dev/editors/blob/dev/vscode/THIRD_PARTY_NOTICES.md)
+and [Rootform trademark terms](https://github.com/rootform-dev/rootform/blob/dev/TRADEMARKS.md) apply.
