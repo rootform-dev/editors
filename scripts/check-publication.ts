@@ -28,7 +28,7 @@ export function trackedPublicationIssues(
   const entries = new Map(
     records.map((entry) => {
       const separator = entry.indexOf("\t");
-      return [entry.slice(separator + 1), entry.slice(0, separator).split(" ")[0]];
+      return [entry.slice(separator + 1), entry.slice(0, separator).split(" ")[0]] as const;
     }),
   );
   return [...entries].flatMap(([path, mode]) => {
@@ -42,7 +42,7 @@ export function trackedPublicationIssues(
       if (mode !== "100644" && mode !== "100755")
         return [{ path, rule: "irregular-entry", line: 1 }];
     } else {
-      let stat;
+      let stat: ReturnType<typeof lstatSync>;
       try {
         stat = lstatSync(full);
       } catch (error) {
