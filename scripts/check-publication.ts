@@ -8,7 +8,17 @@ export function trackedPublicationIssues(
   directory: string,
   revision?: string,
 ): Array<{ path: string; rule: string; line: number }> {
-  const git = (args: string[]) => execFileSync("git", args, { cwd: directory });
+  const git = (args: string[]) => {
+    try {
+      return execFileSync("git", args, {
+        cwd: directory,
+        maxBuffer: 64 * 1024 * 1024,
+        stdio: ["ignore", "pipe", "pipe"],
+      });
+    } catch {
+      throw new Error("Publication refused: cannot read tracked Git content");
+    }
+  };
   const names = git(
     revision && revision !== ":"
       ? ["ls-tree", "-r", "--name-only", "-z", revision]
@@ -42,7 +52,17 @@ export function checkPublication(args: string[]): void {
     return index < 0 ? undefined : args[index + 1];
   };
   const directory = resolve(option("--repo") ?? process.cwd());
-  const git = (args: string[]) => execFileSync("git", args, { cwd: directory }).toString();
+  const git = (args: string[]) => {
+    try {
+      return execFileSync("git", args, {
+        cwd: directory,
+        maxBuffer: 64 * 1024 * 1024,
+        stdio: ["ignore", "pipe", "pipe"],
+      }).toString();
+    } catch {
+      throw new Error("Publication refused: cannot inspect Git history");
+    }
+  };
   const message = option("--message-file");
   if (message) assertPublicMessage(readFileSync(message, "utf8"));
   if (args.includes("--metadata-env"))
@@ -65,4 +85,16 @@ export function checkPublication(args: string[]): void {
   }
 }
 
-if (import.meta.main) checkPublication(process.argv.slice(2));
+if (import.meta.main) {
+  try {
+    checkPublication(process.argv.slice(2));
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+    console.error(
+      /^(?:Publication|Public message) refused: /u.test(message)
+        ? message
+        : "Publication refused: cannot inspect contribution",
+    );
+    process.exit(1);
+  }
+}
