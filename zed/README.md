@@ -1,23 +1,18 @@
 # Rootform for Zed
 
-Write Rootform `.rf.hcl` source with diagnostics, completion, hover, go to
-definition and formatting. The extension adds Rootform syntax highlighting,
-bracket matching, indentation and folding, and starts `rootform lsp` from your
-local Rootform CLI.
-
-Rootform owns parsing, compilation and formatting. The extension does not
-include or download Rootform.
+Write `.rf.hcl` with diagnostics, completion, hover, definitions and formatting.
+The extension adds syntax highlighting and launches `rootform lsp` from your
+local CLI. It ships no compiler and downloads no Rootform binary.
 
 ## Get started
 
-1. [Install Rootform](https://docs.rootform.dev/installation/) and check that
-   `rootform version` works.
-2. In Zed, open **Extensions**, search for **Rootform** and install it.
+1. [Install Rootform](https://docs.rootform.dev/installation/) and verify
+   `rootform version`.
+2. In Zed's **Extensions**, install **Rootform**.
 3. Open a `.rf.hcl` file.
 
-The extension finds `rootform` on the worktree `PATH` and starts it with the
-`lsp` argument. If Rootform is installed elsewhere, set both the path and the
-arguments in Zed's settings:
+The extension finds `rootform` on the worktree `PATH`. To choose another
+executable, set both its path and arguments:
 
 ```json
 {
@@ -32,26 +27,16 @@ arguments in Zed's settings:
 }
 ```
 
-With `binary.path` set, Zed launches that executable directly and passes
-`binary.env` to it. Keep `arguments` set to `["lsp"]`: without it, Rootform
-starts without a subcommand.
+Zed launches that executable directly and passes `binary.env` to it.
+Keep `arguments` set to `["lsp"]`. After a launch error or executable replacement,
+run `editor: restart language server`.
 
-## Troubleshooting
-
-A missing executable produces a message with the complete setting. After
-fixing a launch error or replacing Rootform, run
-`editor: restart language server`.
-
-## Learn more
-
-- [Rootform in Zed](https://docs.rootform.dev/integrations/zed/)
-- [Edit Rootform source](https://docs.rootform.dev/language/editors/)
-- [Report an issue](https://github.com/rootform-dev/editors/issues)
+[Zed guide](https://docs.rootform.dev/integrations/zed/) |
+[`rootform lsp`](https://docs.rootform.dev/reference/cli/lsp/) |
+[Report an issue](https://github.com/rootform-dev/editors/issues)
 
 ## License
 
-The extension source is licensed under [Apache-2.0](LICENSE). The pinned HCL
-Tree-sitter grammar and the Rust crates compiled into the extension keep their
-own licenses, listed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
-Rootform name and logo: trademark rights reserved, see
-[TRADEMARKS.md](https://github.com/rootform-dev/rootform/blob/dev/TRADEMARKS.md).
+[Apache-2.0](LICENSE). [Third-party notices](THIRD_PARTY_NOTICES.md) cover the
+pinned HCL grammar and Rust dependencies.
+[Rootform trademark terms](https://github.com/rootform-dev/rootform/blob/dev/TRADEMARKS.md) apply.
