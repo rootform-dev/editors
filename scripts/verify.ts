@@ -56,6 +56,7 @@ try {
 
 for (const command of [
   ["bun", "scripts/check-publication.ts"],
+  ["bun", "test", "scripts/publication-safety.test.ts"],
   ["gitleaks", "git", "--no-banner", "--redact", "--config", ".gitleaks.toml", "."],
   ["bun", "run", "check:format"],
   ["bun", "run", "build:vscode"],

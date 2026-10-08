@@ -365,14 +365,35 @@ async function exerciseCompletionMatrix(firstRoot) {
   }
 }
 
-async function rootformLogContains(message) {
+async function rootformLogBodies() {
   const logs = path.join(process.env.ROOTFORM_TEST_USER_DATA, "logs");
+  const bodies = [];
   for (const relative of await fs.readdir(logs, { recursive: true })) {
     if (relative.endsWith("Rootform.log")) {
-      if ((await fs.readFile(path.join(logs, relative), "utf8")).includes(message)) return true;
+      bodies.push(await fs.readFile(path.join(logs, relative), "utf8"));
     }
   }
-  return false;
+  return bodies;
+}
+
+async function rootformLogContains(message) {
+  return (await rootformLogBodies()).some((body) => body.includes(message));
+}
+
+async function rootformLogOccurrences(message) {
+  return (await rootformLogBodies()).reduce(
+    (count, body) => count + body.split(message).length - 1,
+    0,
+  );
+}
+
+function rootformChildProcesses(matches) {
+  return cp
+    .execFileSync("ps", ["-axo", "pid=,ppid=,command="], { encoding: "utf8" })
+    .split("\n")
+    .map((line) => /^\s*(\d+)\s+(\d+)\s+(.*)$/.exec(line))
+    .filter((match) => match && Number(match[2]) === process.pid && matches(match[3]))
+    .map((match) => Number(match[1]));
 }
 
 function referencePosition(document) {
@@ -745,6 +766,46 @@ async function run() {
   });
 
   if (process.platform === "darwin" || process.platform === "linux") {
+    // A configured absolute path that does not exist must report the
+    // not-found remediation once, leave no Rootform process behind, and
+    // recover when the provided executable path is restored.
+    const absentServer = path.join(testRoot, "absent-server", "rootform");
+    assert.equal(path.isAbsolute(absentServer), true, "The absent path must be absolute.");
+    await assert.rejects(fs.access(absentServer), "The absent path fixture must not exist.");
+    await settings.update("server.path", absentServer, vscode.ConfigurationTarget.Global);
+    const notFound = `Rootform executable "${absentServer}" was not found. Install Rootform or set "rootform.server.path" to a local executable.`;
+    await until("nonexistent executable reported with its remediation", () =>
+      rootformLogContains(notFound),
+    );
+    await delay(500);
+    assert.equal(
+      await rootformLogOccurrences(`Rootform executable "${absentServer}" was not found.`),
+      1,
+      "A nonexistent executable must be reported once, without a retry loop.",
+    );
+    await until(
+      "no Rootform process left behind while the executable is absent",
+      () => rootformChildProcesses((command) => command.endsWith(" lsp")).length === 0,
+      5000,
+    );
+    assert.deepEqual(
+      rootformChildProcesses((command) => command.includes(absentServer)),
+      [],
+      "A nonexistent executable must not start a process.",
+    );
+    await settings.update("server.path", rootformBinary, vscode.ConfigurationTarget.Global);
+    await until(
+      "hover after restoring the provided executable path",
+      async () =>
+        (
+          await vscode.commands.executeCommand(
+            "vscode.executeHoverProvider",
+            rule.uri,
+            referencePosition(rule),
+          )
+        )?.length > 0,
+    );
+
     // A process that exits before initialize must fail once, then recover when
     // the configured executable is corrected. Use a local recording fixture.
     const incompatible = path.join(testRoot, "incompatible-server");
@@ -817,18 +878,9 @@ async function run() {
       }
     }
     const children = () =>
-      cp
-        .execFileSync("ps", ["-axo", "pid=,ppid=,command="], { encoding: "utf8" })
-        .split("\n")
-        .map((line) => /^\s*(\d+)\s+(\d+)\s+(.*)$/.exec(line))
-        .filter(Boolean)
-        .filter(
-          (item) =>
-            Number(item[2]) === process.pid &&
-            item[3].includes(rootformBinary) &&
-            item[3].endsWith(" lsp"),
-        )
-        .map((item) => Number(item[1]));
+      rootformChildProcesses(
+        (command) => command.includes(rootformBinary) && command.endsWith(" lsp"),
+      );
     const [serverPid] = await until(
       "one running local Rootform child",
       () => children().length === 1 && children(),
