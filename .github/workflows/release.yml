@@ -84,14 +84,36 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ needs.package.outputs.version }}
-        run: >-
-          gh release create "$GITHUB_REF_NAME" artifacts/*
-          --repo "$GITHUB_REPOSITORY" --verify-tag
-          --title "Rootform editors $VERSION"
-          --notes "VS Code and Zed extensions $VERSION. Changes: https://github.com/$GITHUB_REPOSITORY/blob/$GITHUB_REF_NAME/vscode/CHANGELOG.md"
+        run: |
+          set -euo pipefail
+          # gh uploads to a draft and publishes it last. A re-run keeps a release an earlier attempt published.
+          if ! gh api "repos/$GITHUB_REPOSITORY/releases/tags/$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release create "$GITHUB_REF_NAME" artifacts/* \
+              --repo "$GITHUB_REPOSITORY" --verify-tag \
+              --title "Rootform editors $VERSION" \
+              --notes "VS Code and Zed extensions $VERSION. Changes: https://github.com/$GITHUB_REPOSITORY/blob/$GITHUB_REF_NAME/vscode/CHANGELOG.md"
+          fi
+      - name: Require an immutable release holding the packaged files
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          expected="$(cd artifacts && for file in *; do jq -nc --arg name "$file" --arg digest "sha256:$(sha256sum "$file" | cut -d' ' -f1)" '{name: $name, digest: $digest}'; done | jq -sc 'sort_by(.name)')"
+          # The repository enforces immutable releases. GitHub can report the lock a few seconds after publication.
+          for attempt in 1 2 3 4 5 6; do
+            release="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$GITHUB_REF_NAME")"
+            actual="$(jq -c '[.assets[] | {name, digest}] | sort_by(.name)' <<<"$release")"
+            if jq -e '.draft == false and .immutable == true' <<<"$release" >/dev/null && [[ "$actual" == "$expected" ]]; then
+              echo "Published immutable $(jq -r .html_url <<<"$release") holding the packaged VSIX and SHA256SUMS." >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            sleep $((attempt * 5))
+          done
+          echo "::error::$GITHUB_REF_NAME is not an immutable release holding exactly the packaged files, so no store was published. Re-run failed jobs to reuse this run's VSIX."
+          exit 1
 
   open-vsx:
-    needs: package
+    needs: [package, github-release]
     runs-on: ubuntu-24.04
     environment: release
     permissions:
@@ -134,7 +156,7 @@ jobs:
         run: ./node_modules/.bin/ovsx publish --packagePath "../artifacts/rootform-$VERSION.vsix" --skip-duplicate
 
   vs-marketplace:
-    needs: package
+    needs: [package, github-release]
     # Runs once the Entra ID identity is configured; until then the VSIX from
     # the GitHub release is uploaded on the Marketplace publisher page.
     if: vars.AZURE_CLIENT_ID != ''
