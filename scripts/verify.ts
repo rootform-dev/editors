@@ -1,5 +1,7 @@
-import { spawnSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { execFileSync, spawnSync } from "node:child_process";
+import { copyFileSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
 
 if (Bun.version !== "1.4.0") throw new Error("Bun 1.4.0 is required");
 
@@ -22,7 +24,39 @@ for (const [field, ...values] of mismatches) {
 }
 if (mismatches.length > 0) process.exit(1);
 
+const scanRoot = mkdtempSync(join(tmpdir(), "rootform-editor-scan-"));
+try {
+  const candidates = execFileSync("git", [
+    "ls-files",
+    "--cached",
+    "--others",
+    "--exclude-standard",
+    "-z",
+  ])
+    .toString()
+    .split("\0")
+    .filter(Boolean);
+  for (const path of candidates) {
+    const stat = lstatSync(path);
+    if (!stat.isFile() || stat.isSymbolicLink())
+      throw new Error("Unexpected tracked entry in secret scan");
+    const target = join(scanRoot, path);
+    mkdirSync(dirname(target), { recursive: true });
+    copyFileSync(path, target);
+  }
+  const scan = spawnSync(
+    "gitleaks",
+    ["dir", "--no-banner", "--redact", "--config", join(process.cwd(), ".gitleaks.toml"), scanRoot],
+    { stdio: "inherit" },
+  );
+  if (scan.status !== 0) process.exit(scan.status ?? 1);
+} finally {
+  rmSync(scanRoot, { recursive: true, force: true });
+}
+
 for (const command of [
+  ["bun", "scripts/check-publication.ts"],
+  ["gitleaks", "git", "--no-banner", "--redact", "--config", ".gitleaks.toml", "."],
   ["bun", "run", "check:format"],
   ["bun", "run", "build:vscode"],
   ["bun", "run", "--cwd", "vscode", "test:unit"],

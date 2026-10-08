@@ -30,3 +30,6 @@ Read `docs/editor-contract.md` and the affected editor package before editing.
 
 Local development evidence stays outside the public repository. Do not commit
 private implementation, project paths, inputs, credentials or operator notes.
+
+Configure `git config core.hooksPath .githooks` before contributing. Validate
+public messages before sending; diagnostics never reproduce sensitive values.
