@@ -31,9 +31,14 @@ The [release workflow](../.github/workflows/release.yml) refuses a tag whose
 commit is not on `main` or did not pass `verify` in its promotion pull
 request. It checks that the tag
 matches the manifests, runs `verify`, packages one VSIX and attaches it with
-`SHA256SUMS` to the GitHub release. It publishes that same file to Open VSX
-and the Visual Studio Marketplace from the `release` environment, which only
-version tags can use. A re-run skips a version that a store already has.
+`SHA256SUMS` to the GitHub release. The repository enforces immutable
+releases, so once published, that release, its files and its tag never change.
+Only after GitHub reports the release immutable and holding exactly the
+packaged files does the workflow publish that same VSIX to Open VSX and the
+Visual Studio Marketplace, from the `release` environment, which only version
+tags can use. To resume after a failure, re-run the failed jobs: they reuse
+the run's VSIX, keep the published release and skip a version a store already
+has.
 
 ## Visual Studio Marketplace
 
