@@ -1,0 +1,4 @@
+title = "Rootform editor secret scanning"
+
+[extend]
+useDefault = true
